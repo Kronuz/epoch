@@ -1,5 +1,7 @@
 # epoch
 
+[![CI](https://github.com/Kronuz/epoch/actions/workflows/ci.yml/badge.svg)](https://github.com/Kronuz/epoch/actions/workflows/ci.yml)
+
 A small, header-only, dependency-free **time-since-epoch** helper for C++20,
 extracted from [Xapiand](https://github.com/Kronuz/Xapiand).
 
