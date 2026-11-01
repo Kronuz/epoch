@@ -20,14 +20,38 @@ Everything is header-only. There is no `.cc` to compile except the test. The
 CMake target is a pure `INTERFACE` library that only adds the source dir to the
 include path and requests `cxx_std_20`.
 
-## Build and run the test
+## Verification and benchmarks
+
+The shared method is the catalog's
+[PERFORMANCE.md](https://github.com/Kronuz/cpp-libraries/blob/main/docs/PERFORMANCE.md). From a
+fresh clone:
 
 ```sh
-cmake -B build && cmake --build build && ctest --test-dir build
+cmake -B build && cmake --build build && ctest --test-dir build --output-on-failure
 ```
 
-Expected output ends with `all epoch tests passed`, exit 0. The test target is
-`epoch_test`; the registered CTest name is `epoch`.
+- **Test.** CTest `epoch` (target `epoch_test`, `test/test.cc`) reads a live clock, so it checks
+  properties instead of a value: `now()` in seconds lies between 2020-01-01 and 2100-01-01 (Unix
+  constants written into the test), the default unit is seconds, back-to-back reads do not
+  decrease, and milliseconds, microseconds and nanoseconds are seconds times 1e3, 1e6 and 1e9
+  within a second of slack. A wall-clock step back during the run fails the ordering check; rerun
+  it. The checks are `assert`s,
+  so leave `NDEBUG` off (no build type, or Debug). Expected output ends with
+  `all epoch tests passed`, exit 0.
+- **CI.** `.github/workflows/ci.yml` calls the catalog's shared
+  [`cmake.yml`](https://github.com/Kronuz/cpp-libraries/blob/main/.github/workflows/cmake.yml):
+  Linux x86_64 (GCC, Clang) and arm64 (GCC), macOS arm64 and x86_64, and FreeBSD, at `-O2 -g` with
+  asserts live, plus ASan+UBSan and TSan jobs over the same test. The ASan+UBSan job, on Linux:
+
+  ```sh
+  CC=clang CXX=clang++ cmake -B build-asan -DCMAKE_BUILD_TYPE=Debug \
+    "-DCMAKE_CXX_FLAGS=-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS" \
+    -DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined
+  cmake --build build-asan && ASAN_OPTIONS=detect_leaks=1 ctest --test-dir build-asan --output-on-failure
+  ```
+
+- **Not here.** No differential test, mutation script, fuzz target or benchmark, and no
+  performance claim: `now()` is one `system_clock::now()` and a `duration_cast`.
 
 ## Conventions
 
